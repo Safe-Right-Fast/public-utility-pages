@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Date Redirect</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: sans-serif;
+    }
+    .container {
+      text-align: center;
+    }
+    input[type="date"], button {
+      font-size: 1rem;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <input type="date" id="datePicker">
+    <br>
+    <button id="confirmBtn">Confirm</button>
+  </div>
+
+  <script>
+    // Helper: format date as MM-DD-YYYY
+    function formatDate(dateString) {
+      const d = new Date(dateString);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${mm}-${dd}-${yyyy}`;
+    }
+
+    // Get ?url=... parameter
+    const params = new URLSearchParams(window.location.search);
+    const targetUrl = params.get("url");
+
+    document.getElementById("confirmBtn").addEventListener("click", () => {
+      const pickedDate = document.getElementById("datePicker").value;
+      if (!pickedDate) {
+        alert("Please pick a date first.");
+        return;
+      }
+      if (!targetUrl) {
+        alert("Missing ?url parameter.");
+        return;
+      }
+      const formattedDate = formatDate(pickedDate);
+      const finalUrl = targetUrl.replace("--date--", formattedDate);
+      window.location.href = finalUrl;
+    });
+  </script>
+</body>
+</html>
