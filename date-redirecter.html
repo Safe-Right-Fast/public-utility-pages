@@ -20,28 +20,32 @@
       padding: 0.5rem;
       margin-top: 0.5rem;
     }
+    #message {
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <div id="message"></div>
     <input type="date" id="datePicker">
     <br>
     <button id="confirmBtn">Confirm</button>
   </div>
 
   <script>
-    // Helper: format date as MM-DD-YYYY
-    function formatDate(dateString) {
-      const d = new Date(dateString);
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const yyyy = d.getFullYear();
+    // Format YYYY-MM-DD -> MM-DD-YYYY (no timezone issues)
+    function formatDate(isoDate) {
+      const [yyyy, mm, dd] = isoDate.split("-");
       return `${mm}-${dd}-${yyyy}`;
     }
 
-    // Get ?url=... parameter
     const params = new URLSearchParams(window.location.search);
     const targetUrl = params.get("url");
+    const message = params.get("message");
+
+    document.getElementById("message").textContent = message || "Please pick a date";
 
     document.getElementById("confirmBtn").addEventListener("click", () => {
       const pickedDate = document.getElementById("datePicker").value;
