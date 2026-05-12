@@ -218,12 +218,18 @@ class SrfQbRest {
     }
     
     const contentDisposition = response.headers.get('Content-Disposition');
-    console.log('Content-Disposition header:', contentDisposition);
     let fileName = 'unknown-file'; // Default filename
     if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        // Handles filename*=utf-8''... (RFC 5987)
+        let match = contentDisposition.match(/filename\*=utf-8''([^;]+)/i);
         if (match && match[1]) {
-            fileName = match[1];
+            fileName = decodeURIComponent(match[1]);
+        } else {
+            // Handles filename="..." (legacy)
+            match = contentDisposition.match(/filename="([^"]+)"/i);
+            if (match && match[1]) {
+                fileName = match[1];
+            }
         }
     }
     
