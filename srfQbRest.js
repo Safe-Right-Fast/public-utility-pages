@@ -216,7 +216,30 @@ class SrfQbRest {
        const errorText = await response.text().catch(() => 'Could not retrieve error details.');
        throw new Error(`File download failed: ${response.statusText} - ${errorText}`);
     }
-    return response.blob();
+    
+    const contentDisposition = response.headers.get('Content-Disposition');
+    console.log('Content-Disposition header:', contentDisposition);
+    let fileName = 'unknown-file'; // Default filename
+    if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) {
+            fileName = match[1];
+        }
+    }
+    
+    // Per documentation, response is base64 encoded. We need to decode it into a blob.
+    const base64Data = await response.text();
+    const contentType = response.headers.get('Content-Type') || 'application/octet-stream';
+    
+    const byteCharacters = atob(base64Data);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { type: contentType });
+
+    return { blob, fileName };
   }
 }
 

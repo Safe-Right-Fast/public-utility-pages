@@ -211,18 +211,21 @@
                 const currentHash = record[params.versionHashFieldId]?.value;
 
                 let pdfBlob;
-                const useExistingFile = newHash === currentHash && params.fileFieldId && record[params.fileFieldId]?.value?.version;
+                let finalFileName = params.fileName;
+                const useExistingFile = newHash === currentHash && params.fileFieldId && record[params.fileFieldId]?.value?.versions?.length;
 
                 if (useExistingFile) {
                     setStatus('HTML unchanged. Using existing PDF.');
                     setLoadingState(true, 'Downloading...');
                     const fileMeta = record[params.fileFieldId].value;
-                    pdfBlob = await srfQb.downloadFile({
+                    const { blob, fileName } = await srfQb.downloadFile({
                         tableId: params.tableId,
                         recordId: params.keyValue,
                         fieldId: params.fileFieldId,
-                        version: fileMeta.version
+                        version: fileMeta.versions[fileMeta.versions.length - 1].versionNumber // Get latest version
                     });
+                    pdfBlob = blob;
+                    finalFileName = fileName;
                 } else {
                     setStatus('HTML has changed. Generating new PDF...');
                     setLoadingState(true, 'Generating...');
@@ -246,7 +249,7 @@
                 }
                 
                 // 3. Setup download button
-                setupDownloadUI(pdfBlob);
+                setupDownloadUI(pdfBlob, finalFileName);
                 setStatus('Ready to download.', false);
 
             } catch (error) {
@@ -285,9 +288,8 @@
             }
         }
 
-        function setupDownloadUI(pdfBlob) {
+        function setupDownloadUI(pdfBlob, fileName) {
             const objectURL = URL.createObjectURL(pdfBlob);
-            const fileName = params.fileName;
             
             // Convert the Blob into a File object for web drop zones
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
