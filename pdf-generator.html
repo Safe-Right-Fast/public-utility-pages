@@ -30,7 +30,12 @@
         }
         .container {
             text-align: center;
-            padding: 1em;
+            padding: 2em;
+            background-color: var(--bg-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 350px;
+            box-sizing: border-box;
         }
         .button {
             box-sizing: border-box;
@@ -84,6 +89,46 @@
         .status--error {
             color: var(--danger-color);
             font-weight: bold;
+        }
+        .file-drag-wrapper {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .file-drag-handle {
+            display: inline-flex;
+            align-items: center;
+            padding: 10px 15px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: grab;
+            font-family: var(--font-family);
+            color: var(--text-color);
+        }
+        .file-drag-handle:active {
+            cursor: grabbing;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .file-icon {
+            width: 24px;
+            height: 30px;
+            margin-right: 12px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="%236c757d" d="M224 136V0H24C10.7 0 0 10.7 0 24v464c0 13.3 10.7 24 24 24h336c13.3 0 24-10.7 24-24V160H248c-13.2 0-24-10.8-24-24zM384 128h-96V32L384 128z"/></svg>');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .file-name {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .drag-instruction {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #666;
         }
         .loader {
             display: inline-block;
@@ -290,31 +335,43 @@
 
         function setupDownloadUI(pdfBlob, fileName) {
             const objectURL = URL.createObjectURL(pdfBlob);
-            
-            // Convert the Blob into a File object for web drop zones
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-            
-            const downloadLink = document.createElement('a');
-            downloadLink.href = objectURL;
-            downloadLink.download = fileName;
-            downloadLink.textContent = "Download PDF";
-            downloadLink.className = 'button button--success';
-            downloadLink.draggable = true;
-            
-            downloadLink.addEventListener('dragstart', (e) => {
-                // 1. The OS Desktop/Folder trick
+
+            const dragWrapper = document.createElement('div');
+            dragWrapper.className = 'file-drag-wrapper';
+
+            const dragHandle = document.createElement('div');
+            dragHandle.className = 'file-drag-handle';
+            dragHandle.draggable = true;
+
+            const fileIcon = document.createElement('div');
+            fileIcon.className = 'file-icon';
+
+            const fileNameSpan = document.createElement('span');
+            fileNameSpan.className = 'file-name';
+            fileNameSpan.textContent = fileName;
+
+            dragHandle.appendChild(fileIcon);
+            dragHandle.appendChild(fileNameSpan);
+
+            const instruction = document.createElement('div');
+            instruction.className = 'drag-instruction';
+            instruction.textContent = 'Drag this file to your desktop or another application.';
+
+            dragWrapper.appendChild(dragHandle);
+            dragWrapper.appendChild(instruction);
+
+            dragHandle.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('DownloadURL', `application/pdf:${fileName}:${objectURL}`);
-                
-                // 2. The Web App/Dropzone trick (adds actual file to the payload)
                 try {
-                  e.dataTransfer.items.add(file);
+                    e.dataTransfer.items.add(file);
                 } catch (err) {
-                  console.warn('Adding file to dataTransfer is not supported in this browser.', err);
+                    console.warn('Adding file to dataTransfer is not supported in this browser.', err);
                 }
             });
-            
+
             buttonWrapper.innerHTML = '';
-            buttonWrapper.appendChild(downloadLink);
+            buttonWrapper.appendChild(dragWrapper);
         }
     });
     </script>
