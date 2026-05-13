@@ -27,19 +27,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
-        .container {
-            text-align: center;
-            padding: 2em;
-            background-color: var(--bg-color);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 350px;
-            box-sizing: border-box;
+            font-size: 0.9em;
         }
         .button {
             box-sizing: border-box;
-            font-size: 0.9em;
+            
             font-family: var(--font-family);
             letter-spacing: 0.0em;
             cursor: pointer;
@@ -90,16 +82,10 @@
             color: var(--danger-color);
             font-weight: bold;
         }
-        .file-drag-wrapper {
-            border: 2px dashed #ccc;
-            border-radius: 8px;
-            padding: 20px;
-            background-color: #f9f9f9;
-        }
         .file-drag-handle {
             display: inline-flex;
             align-items: center;
-            padding: 10px 15px;
+            padding: 0.4em 0.8em;
             background-color: #fff;
             border: 1px solid #ddd;
             border-radius: var(--border-radius);
@@ -107,14 +93,15 @@
             cursor: grab;
             font-family: var(--font-family);
             color: var(--text-color);
+            text-decoration: none;
         }
         .file-drag-handle:active {
             cursor: grabbing;
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
         .file-icon {
-            width: 24px;
-            height: 30px;
+            width: 12px;
+            height: 20px;
             margin-right: 12px;
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="%236c757d" d="M224 136V0H24C10.7 0 0 10.7 0 24v464c0 13.3 10.7 24 24 24h336c13.3 0 24-10.7 24-24V160H248c-13.2 0-24-10.8-24-24zM384 128h-96V32L384 128z"/></svg>');
             background-size: contain;
@@ -135,8 +122,10 @@
             border: 3px solid #f3f3f3;
             border-top: 3px solid var(--primary-color);
             border-radius: 50%;
-            width: 16px;
-            height: 16px;
+            padding: 0;
+            margin: 0;
+            width: 10px;
+            height: 10px;
             animation: spin 1s linear infinite;
             margin-right: 8px;
             vertical-align: middle;
@@ -149,12 +138,10 @@
 </head>
 <body>
 
-    <div class="container">
         <div id="button-wrapper">
             <button id="mainButton" class="button button--primary">Generate PDF</button>
         </div>
-        <div id="status"></div>
-    </div>
+        <div id="status" hidden ></div>
 
     <script src="?a=dbPage&pageName=srfQbRest.js"></script>
     <script>
@@ -337,14 +324,16 @@
             const objectURL = URL.createObjectURL(pdfBlob);
             const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-            const dragWrapper = document.createElement('div');
-            dragWrapper.className = 'file-drag-wrapper';
+            // const dragWrapper = document.createElement('div');
+            // dragWrapper.className = 'file-drag-wrapper';
 
-            const dragHandle = document.createElement('div');
+            const dragHandle = document.createElement('a');
             dragHandle.className = 'file-drag-handle';
             dragHandle.draggable = true;
+            dragHandle.href = objectURL;
+            dragHandle.download = fileName;
 
-            const fileIcon = document.createElement('div');
+            const fileIcon = document.createElement('span');
             fileIcon.className = 'file-icon';
 
             const fileNameSpan = document.createElement('span');
@@ -358,8 +347,8 @@
             instruction.className = 'drag-instruction';
             instruction.textContent = 'Drag this file to your desktop or another application.';
 
-            dragWrapper.appendChild(dragHandle);
-            dragWrapper.appendChild(instruction);
+            // dragWrapper.appendChild(dragHandle);
+            // dragWrapper.appendChild(instruction);
 
             dragHandle.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('DownloadURL', `application/pdf:${fileName}:${objectURL}`);
@@ -371,7 +360,7 @@
             });
 
             buttonWrapper.innerHTML = '';
-            buttonWrapper.appendChild(dragWrapper);
+            buttonWrapper.appendChild(dragHandle);
         }
     });
     </script>
