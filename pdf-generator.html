@@ -6,10 +6,8 @@
     <title>PDF Generator</title>
     <style>
         :root {
-            --primary-color: #005cf5;
-            --primary-hover-color: #004eda;
-            --success-color: #27880b;
-            --success-hover-color: #1e6a08;
+            --primary-color: rgb(96, 204, 96);
+            --primary-hover-color: #4eb94e;
             --danger-color: #db3400;
             --text-color: #333;
             --bg-color: #fff;
@@ -17,190 +15,128 @@
             --font-family: 'Gibson-Regular', Helvetica, Arial, Sans-Serif;
         }
         body, html {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            width: 100%;
+            margin: 0; padding: 0; height: 100%; width: 100%;
             font-family: var(--font-family);
             background-color: transparent;
             color: var(--text-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
             font-size: 0.9em;
         }
         .button {
             box-sizing: border-box;
-            
-            font-family: var(--font-family);
-            letter-spacing: 0.0em;
             cursor: pointer;
             transition: 0.1s linear all;
-            filter: none;
-            font-weight: normal;
             color: var(--bg-color);
-            margin: 0;
-            text-decoration: none;
             padding: 0.4em 0.8em;
             border-radius: var(--border-radius);
             box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
-            text-shadow: rgba(0, 0, 0, 0.3) 0px 1px 4px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            border: none;
-            min-width: 150px;
-        }
-        .button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        .button--primary {
+            display: inline-flex; align-items: center; justify-content: center;
+            border: none; min-width: 150px;
             background-color: var(--primary-color);
         }
-        .button--primary:hover:not(:disabled) {
+        .button:hover:not(:disabled) {
             background-color: var(--primary-hover-color);
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
-        .button--success {
-            background-color: var(--success-color);
-        }
-        .button--success:hover:not(:disabled) {
-            background-color: var(--success-hover-color);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-        #status {
-            margin-top: 0.5em;
-            font-size: 12px;
-            transition: margin-top 0.2s ease-in-out;
-        }
-        #status:empty {
-            margin-top: 0;
-        }
-        .status--error {
-            color: var(--danger-color);
-            font-weight: bold;
-        }
+        .button:disabled { cursor: not-allowed; opacity: 0.6; }
+
+        #status { margin-top: 0.5em; font-size: 12px; }
+        .status--error { color: var(--danger-color); font-weight: bold; }
+
         .file-drag-handle {
-            display: inline-flex;
-            align-items: center;
+            display: inline-flex; align-items: center;
             padding: 0.4em 0.8em;
-            background-color: #fff;
-            border: 1px solid #ddd;
+            background-color: #fff; border: 1px solid #ddd;
             border-radius: var(--border-radius);
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            cursor: grab;
-            font-family: var(--font-family);
-            color: var(--text-color);
-            text-decoration: none;
+            cursor: grab; color: var(--text-color); text-decoration: none;
         }
-        .file-drag-handle:active {
-            cursor: grabbing;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
+        .file-drag-handle:active { cursor: grabbing; }
+
         .file-icon {
-            width: 12px;
-            height: 20px;
-            margin-right: 12px;
+            width: 12px; height: 20px; margin-right: 12px;
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="%236c757d" d="M224 136V0H24C10.7 0 0 10.7 0 24v464c0 13.3 10.7 24 24 24h336c13.3 0 24-10.7 24-24V160H248c-13.2 0-24-10.8-24-24zM384 128h-96V32L384 128z"/></svg>');
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
+            background-size: contain; background-repeat: no-repeat; background-position: center;
         }
-        .file-name {
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .drag-instruction {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #666;
-        }
+        .file-name { font-size: 14px; font-weight: bold; }
+
         .loader {
-            display: inline-block;
-            border: 3px solid #f3f3f3;
+            display: inline-block; border: 3px solid #f3f3f3;
             border-top: 3px solid var(--primary-color);
-            border-radius: 50%;
-            padding: 0;
-            margin: 0;
-            width: 10px;
-            height: 10px;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
-            vertical-align: middle;
+            border-radius: 50%; width: 10px; height: 10px;
+            animation: spin 1s linear infinite; margin-right: 8px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
-        <div id="button-wrapper">
-            <button id="mainButton" class="button button--primary">Generate PDF</button>
-        </div>
-        <div id="status" hidden ></div>
+    <div id="button-wrapper">
+        <button id="mainButton" class="button">Generate PDF</button>
+    </div>
+    <div id="status"></div>
 
     <script src="?a=dbPage&pageName=srfQbRest.js"></script>
     <script>
-    // --- Main Application Logic ---
     document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. Exit if in Mobile WebView ---
+        if (localStorage.getItem('isReactNativeWebView') === 'true') {
+            document.body.innerHTML = '';
+            return;
+        }
+
         const mainButton = document.getElementById('mainButton');
         const statusDiv = document.getElementById('status');
         const buttonWrapper = document.getElementById('button-wrapper');
 
+        // --- 2. Initialize Parameters ---
         let params = {};
-
         try {
             const urlParams = new URLSearchParams(window.location.search);
             params = {
                 htmlFieldId: parseInt(urlParams.get('htmlFieldId'), 10),
                 tableId: urlParams.get('tableId'),
                 fileFieldId: urlParams.get('fileFieldId') ? parseInt(urlParams.get('fileFieldId'), 10) : null,
-                keyFieldId: urlParams.get('keyFieldId') ? parseInt(urlParams.get('keyFieldId'), 10) : 3,
-                keyValue: urlParams.get('keyValue'),
+                keyFieldId: 3,
+                recordId: urlParams.get('recordId'),
                 fileName: urlParams.get('fileName') || 'document.pdf',
                 versionFieldId: parseInt(urlParams.get('versionFieldId'), 10),
                 versionHashFieldId: parseInt(urlParams.get('versionHashFieldId'), 10),
                 apptoken: urlParams.get('apptoken'),
-            };
+                hideStatus: urlParams.get('hideStatus') === 'true' // Added query param
+            };  
 
-            if (!params.htmlFieldId || !params.tableId || !params.keyValue || !params.versionFieldId || !params.versionHashFieldId || !params.apptoken) {
-                throw new Error("Missing required URL parameters.");
-            }
+            const required = ['htmlFieldId', 'tableId', 'recordId', 'versionFieldId', 'versionHashFieldId', 'apptoken'];
+            if (required.some(key => !params[key])) throw new Error("Missing required URL parameters.");
         } catch (e) {
             setStatus(e.message, true);
             mainButton.disabled = true;
             return;
         }
 
-        const srfQb = new SrfQbRest({ appToken: params.apptoken, logging: true, userAgent: 'PDF Generator Widget' });
-        
+        const srfQb = new SrfQbRest({ appToken: params.apptoken, userAgent: 'PDF Generator Widget' });
         mainButton.addEventListener('click', handleGeneration);
 
-        function setStatus(message, isError = false) {
-            statusDiv.innerHTML = message;
-            statusDiv.className = isError ? 'status--error' : '';
-        }
-
-        function setLoadingState(isLoading, message = 'Processing...') {
-            if (isLoading) {
-                mainButton.disabled = true;
-                mainButton.innerHTML = `<span class="loader"></span> ${message}`;
-            } else {
-                mainButton.disabled = false;
-                mainButton.innerHTML = "Generate PDF";
+        // --- 3. UI Helpers ---
+        function setStatus(msg, isErr = false) {
+            // If hideStatus is true, we only show critical errors, not progress updates
+            if (params.hideStatus && !isErr) {
+                statusDiv.innerHTML = '';
+                return;
             }
+            statusDiv.innerHTML = msg;
+            statusDiv.className = isErr ? 'status--error' : '';
         }
 
+        function setLoading(loading, msg = 'Processing...') {
+            mainButton.disabled = loading;
+            mainButton.innerHTML = loading ? `<span class="loader"></span> ${msg}` : "Generate PDF";
+        }
+
+        // --- 4. Logic Functions ---
         async function sha256(text) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(text);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
         function blobToBase64(blob) {
@@ -213,154 +149,103 @@
         }
 
         async function handleGeneration() {
-            setLoadingState(true, 'Fetching data...');
+            setLoading(true, 'Fetching data...');
             setStatus('');
 
             try {
-                // 1. Fetch record from Quickbase
-                const selectFids = [params.htmlFieldId, params.versionFieldId, params.versionHashFieldId];
-                if(params.fileFieldId) selectFids.push(params.fileFieldId);
+                const select = [params.htmlFieldId, params.versionFieldId, params.versionHashFieldId];
+                if(params.fileFieldId) select.push(params.fileFieldId);
 
-                const records = await srfQb.query({
-                    from: params.tableId,
-                    where: `{${params.keyFieldId}.EX.'${params.keyValue}'}`,
-                    select: selectFids
-                });
-
-                if (!records || records.length === 0) {
-                    throw new Error("Record not found.");
-                }
+                const records = await srfQb.query({ from: params.tableId, where: `{${params.keyFieldId}.EX.'${params.recordId}'}`, select });
+                if (!records?.length) throw new Error("Record not found.");
+                
                 const record = records[0];
-
                 const htmlContent = record[params.htmlFieldId]?.value;
-                if (!htmlContent) {
-                    throw new Error(`HTML content not found in field ${params.htmlFieldId}.`);
-                }
+                if (!htmlContent) throw new Error("HTML content not found.");
 
-                // 2. Hash HTML and compare
-                setLoadingState(true, 'Verifying...');
                 const newHash = await sha256(htmlContent);
                 const currentHash = record[params.versionHashFieldId]?.value;
+                const existingFile = record[params.fileFieldId]?.value;
 
-                let pdfBlob;
-                let finalFileName = params.fileName;
-                const useExistingFile = newHash === currentHash && params.fileFieldId && record[params.fileFieldId]?.value?.versions?.length;
+                let pdfBlob, base64Pdf;
+                const useExisting = newHash === currentHash && params.fileFieldId && existingFile?.versions?.length;
 
-                if (useExistingFile) {
-                    setStatus('HTML unchanged. Using existing PDF.');
-                    setLoadingState(true, 'Downloading...');
-                    const fileMeta = record[params.fileFieldId].value;
-                    const { blob, fileName } = await srfQb.downloadFile({
-                        tableId: params.tableId,
-                        recordId: params.keyValue,
-                        fieldId: params.fileFieldId,
-                        version: fileMeta.versions[fileMeta.versions.length - 1].versionNumber // Get latest version
+                if (useExisting) {
+                    setStatus('Using existing PDF.');
+                    setLoading(true, 'Downloading...');
+                    const { blob } = await srfQb.downloadFile({
+                        tableId: params.tableId, recordId: params.recordId, fieldId: params.fileFieldId,
+                        version: existingFile.versions[existingFile.versions.length - 1].versionNumber
                     });
                     pdfBlob = blob;
-                    finalFileName = fileName;
                 } else {
-                    setStatus('HTML has changed. Generating new PDF...');
-                    setLoadingState(true, 'Generating...');
-                    
-                    // Generate new PDF
-                    const pdfRes = await fetch('https://saferightfast.app/api/generate-pdf', {
+                    setStatus('Generating new PDF...');
+                    const res = await fetch('https://saferightfast.app/api/generate-pdf', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ html: htmlContent }),
                     });
-
-                    if (!pdfRes.ok) {
-                        const errorText = await pdfRes.text();
-                        throw new Error(`PDF Generation Service failed: ${errorText}`);
-                    }
-                    pdfBlob = await pdfRes.blob();
-                    
-                    setStatus('Updating Quickbase record...');
-                    // Don't wait for this to finish before showing download button
-                    updateQuickbaseRecord(pdfBlob, newHash, record);
+                    if (!res.ok) throw new Error(`Service failed: ${await res.text()}`);
+                    pdfBlob = await res.blob();
                 }
-                
-                // 3. Setup download button
-                setupDownloadUI(pdfBlob, finalFileName);
-                setStatus('Ready to download.', false);
 
+                base64Pdf = await blobToBase64(pdfBlob);
+                if (!useExisting) updateQuickbase(base64Pdf, newHash, record);
+
+                setupDownloadUI(pdfBlob, base64Pdf, params.fileName);
+                setStatus('Ready to download.');
             } catch (error) {
-                console.error(error);
                 setStatus(error.message, true);
-                setLoadingState(false);
+                setLoading(false);
             }
         }
 
-        async function updateQuickbaseRecord(pdfBlob, hash, record) {
+        async function updateQuickbase(base64, hash, record) {
+            if (!params.fileFieldId) return;
             try {
-                if (!params.fileFieldId) {
-                  console.log("No fileFieldId provided, skipping file upload.");
-                  return;
-                }
-                const base64Pdf = await blobToBase64(pdfBlob);
-                const currentVersion = record[params.versionFieldId]?.value || 0;
-                
-                const dataToUpdate = {
-                    [params.keyFieldId]: { value: params.keyValue },
-                    [params.versionFieldId]: { value: currentVersion + 1 },
-                    [params.versionHashFieldId]: { value: hash },
-                    [params.fileFieldId]: { value: { fileName: params.fileName, data: base64Pdf } }
-                };
-
+                const curVer = record[params.versionFieldId]?.value || 0;
                 await srfQb.upsert({
                     to: params.tableId,
-                    data: [dataToUpdate],
                     mergeFieldId: params.keyFieldId,
-                    fieldsToReturn: []
+                    data: [{
+                        [params.keyFieldId]: { value: params.recordId },
+                        [params.versionFieldId]: { value: curVer + 1 },
+                        [params.versionHashFieldId]: { value: hash },
+                        [params.fileFieldId]: { value: { fileName: params.fileName, data: base64 } }
+                    }]
                 });
-                setStatus('Quickbase record updated successfully.', false);
-            } catch (error) {
-                console.error('Failed to update Quickbase record:', error);
-                setStatus(`Failed to update Quickbase: ${error.message}`, true);
-            }
+            } catch (e) { console.error('QB Update Failed:', e); }
         }
 
-        function setupDownloadUI(pdfBlob, fileName) {
-            const objectURL = URL.createObjectURL(pdfBlob);
-            const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        function setupDownloadUI(blob, base64, name) {
+            const dataURI = `data:application/pdf;base64,${base64}`;
+            const file = new File([blob], name, { type: 'application/pdf' });
 
-            // const dragWrapper = document.createElement('div');
-            // dragWrapper.className = 'file-drag-wrapper';
+            const handle = document.createElement('a');
+            handle.className = 'file-drag-handle';
+            handle.draggable = true;
+            handle.href = dataURI;
+            handle.download = name;
+            handle.innerHTML = `<span class="file-icon"></span><span class="file-name">${name}</span>`;
 
-            const dragHandle = document.createElement('a');
-            dragHandle.className = 'file-drag-handle';
-            dragHandle.draggable = true;
-            dragHandle.href = objectURL;
-            dragHandle.download = fileName;
+            handle.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('DownloadURL', `application/pdf:${name}:${dataURI}`);
+                try { e.dataTransfer.items.add(file); } catch (err) {}
+            });
 
-            const fileIcon = document.createElement('span');
-            fileIcon.className = 'file-icon';
-
-            const fileNameSpan = document.createElement('span');
-            fileNameSpan.className = 'file-name';
-            fileNameSpan.textContent = fileName;
-
-            dragHandle.appendChild(fileIcon);
-            dragHandle.appendChild(fileNameSpan);
-
-            const instruction = document.createElement('div');
-            instruction.className = 'drag-instruction';
-            instruction.textContent = 'Drag this file to your desktop or another application.';
-
-            // dragWrapper.appendChild(dragHandle);
-            // dragWrapper.appendChild(instruction);
-
-            dragHandle.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('DownloadURL', `application/pdf:${fileName}:${objectURL}`);
-                try {
-                    e.dataTransfer.items.add(file);
-                } catch (err) {
-                    console.warn('Adding file to dataTransfer is not supported in this browser.', err);
-                }
+            handle.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetDoc = (() => { try { return window.top.document; } catch(e) { return document; } })();
+                const link = targetDoc.createElement('a');
+                link.href = dataURI;
+                link.download = name;
+                targetDoc.body.appendChild(link);
+                link.click();
+                targetDoc.body.removeChild(link);
             });
 
             buttonWrapper.innerHTML = '';
-            buttonWrapper.appendChild(dragHandle);
+            buttonWrapper.appendChild(handle);
         }
     });
     </script>
