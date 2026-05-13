@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+--- QUICKBASE FORMULA URL REFERENCE ---
+Use the following logic in a Formula-URL field to launch this widget.
+
+// 1. CONFIGURATION
+var text PageName    = "your-filename.html";
+var number HtmlFID   = 10;                     // FID of the HTML source field
+var text FileName    = [Name] & "_Document.pdf"; // Logic for the saved file name
+var text AppToken    = "YOUR_APP_TOKEN";       // Or reference an [App Token] field
+
+var number FileFID    = 11;                    // FID of the File Attachment field
+var number VersionFID = 12;                    // FID of the Numeric Version field
+var number HashFID    = 13;                    // FID of the Text field for SHA-256 hashes
+
+// 2. CONSTRUCT URL
+If(not IsNull([Record ID#]),
+    "https://safe-right-fast.github.io/public-utility-pages/iframer.html?url=" & 
+    URLEncode(
+        URLRoot() & "db/" & AppID() & "?a=dbpage&pagename=" & $PageName &
+        "&htmlFieldId="      & $HtmlFID &
+        "&tableId="           & Dbid() &
+        "&fileFieldId="       & $FileFID &
+        "&recordId="          & [Record ID#] &
+        "&fileName="          & URLEncode($FileName) &
+        "&versionFieldId="    & $VersionFID &
+        "&versionHashFieldId="& $HashFID &
+        "&apptoken="          & $AppToken &
+        "&hideStatus="        & "true"
+    )
+)
+----------------------------------------
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Generator</title>
+    <style>
+        :root {
+            --primary-color: rgb(96, 204, 96);
+            --primary-hover-color: #4eb94e;
+            --danger-color: #db3400;
+            --text-color: #333;
+            --bg-color: #fff;
+            --border-radius: 4px;
+            --font-family: 'Gibson-Regular', Helvetica, Arial, Sans-Serif;
+        }
+        body, html {
+            margin: 0; padding: 0; height: 100%; width: 100%;
+            font-family: var(--font-family);
+            background-color: transparent;
+            color: var(--text-color);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 0.9em;
+        }
+        .button {
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: 0.1s linear all;
+            color: var(--bg-color);
+            padding: 0.4em 0.8em;
+            border-radius: var(--border-radius);
+            box-shadow: rgba(0, 0, 0, 0.16) 0px 1px 4px;
+            display: inline-flex; align-items: center; justify-content: center;
+            border: none; min-width: 150px;
+            background-color: var(--primary-color);
+        }
+        .button:hover:not(:disabled) {
+            background-color: var(--primary-hover-color);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .button:disabled { cursor: not-allowed; opacity: 0.6; }
+
+        #status { margin-top: 0.5em; font-size: 12px; }
+        .status--error { color: var(--danger-color); font-weight: bold; }
+
+        .file-drag-handle {
+            display: inline-flex; align-items: center;
+            padding: 0.4em 0.8em;
+            background-color: #fff; border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            cursor: grab; color: var(--text-color); text-decoration: none;
+        }
+        .file-drag-handle:active { cursor: grabbing; }
+
+        .file-icon {
+            width: 12px; height: 20px; margin-right: 12px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path fill="%236c757d" d="M224 136V0H24C10.7 0 0 10.7 0 24v464c0 13.3 10.7 24 24 24h336c13.3 0 24-10.7 24-24V160H248c-13.2 0-24-10.8-24-24zM384 128h-96V32L384 128z"/></svg>');
+            background-size: contain; background-repeat: no-repeat; background-position: center;
+        }
+        .file-name { font-size: 14px; font-weight: bold; }
+
+        .loader {
+            display: inline-block; border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%; width: 10px; height: 10px;
+            animation: spin 1s linear infinite; margin-right: 8px;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="button-wrapper">
+        <button id="mainButton" class="button">Generate PDF</button>
+    </div>
+    <div id="status"></div>
+
+    <script src="https://safe-right-fast.github.io/public-utility-pages/srfQbRest.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. Exit if in Mobile WebView ---
+        if (localStorage.getItem('isReactNativeWebView') === 'true') {
+            document.body.innerHTML = '';
+            return;
+        }
+
+        const mainButton = document.getElementById('mainButton');
+        const statusDiv = document.getElementById('status');
+        const buttonWrapper = document.getElementById('button-wrapper');
+
+        // --- 2. Initialize Parameters ---
+        let params = {};
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            params = {
+                htmlFieldId: parseInt(urlParams.get('htmlFieldId'), 10),
+                tableId: urlParams.get('tableId'),
+                fileFieldId: urlParams.get('fileFieldId') ? parseInt(urlParams.get('fileFieldId'), 10) : null,
+                keyFieldId: 3,
+                recordId: urlParams.get('recordId'),
+                fileName: urlParams.get('fileName') || 'document.pdf',
+                versionFieldId: parseInt(urlParams.get('versionFieldId'), 10),
+                versionHashFieldId: parseInt(urlParams.get('versionHashFieldId'), 10),
+                apptoken: urlParams.get('apptoken'),
+                hideStatus: urlParams.get('hideStatus') === 'true' // Added query param
+            };  
+
+            const required = ['htmlFieldId', 'tableId', 'recordId', 'versionFieldId', 'versionHashFieldId', 'apptoken'];
+            if (required.some(key => !params[key])) throw new Error("Missing required URL parameters.");
+        } catch (e) {
+            setStatus(e.message, true);
+            mainButton.disabled = true;
+            return;
+        }
+
+        const srfQb = new SrfQbRest({ appToken: params.apptoken, userAgent: 'PDF Generator Widget' });
+        mainButton.addEventListener('click', handleGeneration);
+
+        // --- 3. UI Helpers ---
+        function setStatus(msg, isErr = false) {
+            // If hideStatus is true, we only show critical errors, not progress updates
+            if (params.hideStatus && !isErr) {
+                statusDiv.innerHTML = '';
+                return;
+            }
+            statusDiv.innerHTML = msg;
+            statusDiv.className = isErr ? 'status--error' : '';
+        }
+
+        function setLoading(loading, msg = 'Processing...') {
+            mainButton.disabled = loading;
+            mainButton.innerHTML = loading ? `<span class="loader"></span> ${msg}` : "Generate PDF";
+        }
+
+        // --- 4. Logic Functions ---
+        async function sha256(text) {
+            const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        async function handleGeneration() {
+            setLoading(true, 'Fetching data...');
+            setStatus('');
+
+            try {
+                const select = [params.htmlFieldId, params.versionFieldId, params.versionHashFieldId];
+                if(params.fileFieldId) select.push(params.fileFieldId);
+
+                const records = await srfQb.query({ from: params.tableId, where: `{${params.keyFieldId}.EX.'${params.recordId}'}`, select });
+                if (!records?.length) throw new Error("Record not found.");
+                
+                const record = records[0];
+                const htmlContent = record[params.htmlFieldId]?.value;
+                if (!htmlContent) throw new Error("HTML content not found.");
+
+                const newHash = await sha256(htmlContent);
+                const currentHash = record[params.versionHashFieldId]?.value;
+                const existingFile = record[params.fileFieldId]?.value;
+
+                let pdfBlob, base64Pdf;
+                const useExisting = newHash === currentHash && params.fileFieldId && existingFile?.versions?.length;
+
+                if (useExisting) {
+                    setStatus('Using existing PDF.');
+                    setLoading(true, 'Downloading...');
+                    const { blob } = await srfQb.downloadFile({
+                        tableId: params.tableId, recordId: params.recordId, fieldId: params.fileFieldId,
+                        version: existingFile.versions[existingFile.versions.length - 1].versionNumber
+                    });
+                    pdfBlob = blob;
+                } else {
+                    setStatus('Generating new PDF...');
+                    const res = await fetch('https://saferightfast.app/api/generate-pdf', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ html: htmlContent }),
+                    });
+                    if (!res.ok) throw new Error(`Service failed: ${await res.text()}`);
+                    pdfBlob = await res.blob();
+                }
+
+                base64Pdf = await blobToBase64(pdfBlob);
+                if (!useExisting) updateQuickbase(base64Pdf, newHash, record);
+
+                setupDownloadUI(pdfBlob, base64Pdf, params.fileName);
+                setStatus('Ready to download.');
+            } catch (error) {
+                setStatus(error.message, true);
+                setLoading(false);
+            }
+        }
+
+        async function updateQuickbase(base64, hash, record) {
+            if (!params.fileFieldId) return;
+            try {
+                const curVer = record[params.versionFieldId]?.value || 0;
+                await srfQb.upsert({
+                    to: params.tableId,
+                    mergeFieldId: params.keyFieldId,
+                    data: [{
+                        [params.keyFieldId]: { value: params.recordId },
+                        [params.versionFieldId]: { value: curVer + 1 },
+                        [params.versionHashFieldId]: { value: hash },
+                        [params.fileFieldId]: { value: { fileName: params.fileName, data: base64 } }
+                    }]
+                });
+            } catch (e) { console.error('QB Update Failed:', e); }
+        }
+
+        function setupDownloadUI(blob, base64, name) {
+            const dataURI = `data:application/pdf;base64,${base64}`;
+            const file = new File([blob], name, { type: 'application/pdf' });
+
+            const handle = document.createElement('a');
+            handle.className = 'file-drag-handle';
+            handle.draggable = true;
+            handle.href = dataURI;
+            handle.download = name;
+            handle.innerHTML = `<span class="file-icon"></span><span class="file-name">${name}</span>`;
+
+            handle.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('DownloadURL', `application/pdf:${name}:${dataURI}`);
+                try { e.dataTransfer.items.add(file); } catch (err) {}
+            });
+
+            handle.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetDoc = (() => { try { return window.top.document; } catch(e) { return document; } })();
+                const link = targetDoc.createElement('a');
+                link.href = dataURI;
+                link.download = name;
+                targetDoc.body.appendChild(link);
+                link.click();
+                targetDoc.body.removeChild(link);
+            });
+
+            buttonWrapper.innerHTML = '';
+            buttonWrapper.appendChild(handle);
+        }
+    });
+    </script>
+</body>
+</html>
