@@ -1,5 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
+<!--
+--- QUICKBASE FORMULA URL REFERENCE ---
+Use the following logic in a Formula-URL field to launch this widget.
+
+// 1. CONFIGURATION
+var text PageName    = "your-filename.html";
+var number HtmlFID   = 10;                     // FID of the HTML source field
+var text FileName    = [Name] & "_Document.pdf"; // Logic for the saved file name
+var text AppToken    = "YOUR_APP_TOKEN";       // Or reference an [App Token] field
+
+var number FileFID    = 11;                    // FID of the File Attachment field
+var number VersionFID = 12;                    // FID of the Numeric Version field
+var number HashFID    = 13;                    // FID of the Text field for SHA-256 hashes
+
+// 2. CONSTRUCT URL
+If(not IsNull([Record ID#]),
+    "https://safe-right-fast.github.io/public-utility-pages/iframer.html?url=" & 
+    URLEncode(
+        URLRoot() & "db/" & AppID() & "?a=dbpage&pagename=" & $PageName &
+        "&htmlFieldId="      & $HtmlFID &
+        "&tableId="           & Dbid() &
+        "&fileFieldId="       & $FileFID &
+        "&recordId="          & [Record ID#] &
+        "&fileName="          & URLEncode($FileName) &
+        "&versionFieldId="    & $VersionFID &
+        "&versionHashFieldId="& $HashFID &
+        "&apptoken="          & $AppToken &
+        "&hideStatus="        & "true"
+    )
+)
+----------------------------------------
+-->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -76,7 +108,7 @@
     </div>
     <div id="status"></div>
 
-    <script src="?a=dbPage&pageName=srfQbRest.js"></script>
+    <script src="https://safe-right-fast.github.io/public-utility-pages/srfQbRest.js"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         // --- 1. Exit if in Mobile WebView ---
