@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+--- QUICKBASE FORMULA URL REFERENCE ---
+This codepage renders a generic "unique child value" editor for a set of row
+records. URL-encode rowWhere, headers, and other values that can contain
+Quickbase query syntax or spaces.
+
+Required params:
+rowTableId
+rowWhere
+rowLabelFieldIds
+childTableId
+childValueFieldId
+childRelatedRowFieldId
+apptoken
+
+Common optional params:
+rowKeyFieldId=3
+childKeyFieldId=3
+rowLabelHeaders=Build,Model
+rowSortFieldId=6
+rowSortOrder=ASC
+title=Serial Numbers
+childValueHeader=Serial Number
+placeholder=Enter Serial Number
+readonly=true|false
+showInMobile=true
+maxRows=600
+validationDelayMs=1200
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unique Child Field</title>
+  <style>
+    :root {
+      --primary-color: rgb(96, 204, 96);
+      --primary-hover-color: #4eb94e;
+      --danger-color: #db3400;
+      --warning-color: #a96200;
+      --ok-color: #1c7c38;
+      --muted-color: #69717a;
+      --text-color: #222;
+      --bg-color: #fff;
+      --soft-bg-color: #f6f8f9;
+      --border-color: #d9dee3;
+      --border-radius: 4px;
+      --font-family: 'Gibson-Regular', Helvetica, Arial, Sans-Serif;
+    }
+
+    html,
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      min-height: 100%;
+      width: 100%;
+      color: var(--text-color);
+      background: transparent;
+      font-family: var(--font-family);
+      font-size: 14px;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: inherit;
+    }
+
+    body {
+      padding: 10px;
+    }
+
+    .widget {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 600;
+      flex: 1 1 180px;
+    }
+
+    .search {
+      flex: 1 1 220px;
+      min-width: 140px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 6px 8px;
+      font: inherit;
+      color: var(--text-color);
+      background: var(--bg-color);
+    }
+
+    .button {
+      border: none;
+      border-radius: var(--border-radius);
+      padding: 6px 10px;
+      color: #fff;
+      background: var(--primary-color);
+      box-shadow: rgba(0, 0, 0, 0.16) 0 1px 4px;
+      cursor: pointer;
+      font: inherit;
+      white-space: nowrap;
+    }
+
+    .button:hover:not(:disabled) {
+      background: var(--primary-hover-color);
+    }
+
+    .button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .button--secondary {
+      color: var(--text-color);
+      background: #fff;
+      border: 1px solid var(--border-color);
+      box-shadow: none;
+    }
+
+    .button--secondary:hover:not(:disabled) {
+      background: var(--soft-bg-color);
+    }
+
+    .status-bar {
+      min-height: 18px;
+      margin-bottom: 8px;
+      color: var(--muted-color);
+      font-size: 12px;
+    }
+
+    .status-bar--error {
+      color: var(--danger-color);
+      font-weight: 600;
+    }
+
+    .status-bar--warn {
+      color: var(--warning-color);
+      font-weight: 600;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow: auto;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      background: var(--bg-color);
+    }
+
+    table {
+      width: 100%;
+      min-width: 540px;
+      border-collapse: collapse;
+      table-layout: auto;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--border-color);
+      padding: 7px 8px;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--soft-bg-color);
+      color: #2c3338;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr.is-dirty td {
+      background: #fffdf4;
+    }
+
+    tr.is-error td {
+      background: #fff6f3;
+    }
+
+    .value-input {
+      width: 100%;
+      min-width: 160px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 5px 7px;
+      font: inherit;
+      color: var(--text-color);
+      background: #fff;
+    }
+
+    .value-input:disabled {
+      color: var(--muted-color);
+      background: var(--soft-bg-color);
+    }
+
+    .value-input.is-error {
+      border-color: var(--danger-color);
+    }
+
+    .muted {
+      color: var(--muted-color);
+    }
+
+    .row-status {
+      width: 170px;
+      color: var(--muted-color);
+      font-size: 12px;
+    }
+
+    .row-status--ok {
+      color: var(--ok-color);
+    }
+
+    .row-status--warn {
+      color: var(--warning-color);
+    }
+
+    .row-status--error {
+      color: var(--danger-color);
+      font-weight: 600;
+    }
+
+    .actions {
+      width: 74px;
+      text-align: right;
+    }
+
+    .link-button {
+      border: none;
+      padding: 0;
+      color: #1d5d9b;
+      background: transparent;
+      cursor: pointer;
+      font: inherit;
+      text-decoration: underline;
+    }
+
+    .empty-state,
+    .loading-state {
+      padding: 18px;
+      color: var(--muted-color);
+      text-align: center;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .modal-backdrop[hidden] {
+      display: none;
+    }
+
+    .modal {
+      width: min(420px, 100%);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      background: var(--bg-color);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, 0.22);
+    }
+
+    .modal__body {
+      padding: 14px;
+    }
+
+    .modal__title {
+      margin: 0 0 8px;
+      font-size: 16px;
+      line-height: 1.3;
+      font-weight: 600;
+    }
+
+    .modal__message {
+      margin: 0;
+      color: var(--text-color);
+      white-space: pre-wrap;
+    }
+
+    .modal__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 10px 14px 14px;
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 6px;
+      }
+
+      .toolbar {
+        align-items: stretch;
+      }
+
+      h1,
+      .search,
+      .button {
+        flex-basis: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="widget">
+    <div class="toolbar">
+      <h1 id="title">Unique Child Field</h1>
+      <input id="searchInput" class="search" type="search" placeholder="Search" autocomplete="off">
+      <button id="refreshButton" class="button button--secondary" type="button">Refresh</button>
+      <button id="revertAllButton" class="button button--secondary" type="button" disabled>Revert All</button>
+      <button id="saveButton" class="button" type="button" disabled>Save Changes</button>
+    </div>
+    <div id="statusBar" class="status-bar"></div>
+    <div id="tableHost" class="table-wrap">
+      <div class="loading-state">Loading...</div>
+    </div>
+  </div>
+
+  <div id="confirmModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+      <div class="modal__body">
+        <h2 id="confirmTitle" class="modal__title">Confirm</h2>
+        <p id="confirmMessage" class="modal__message"></p>
+      </div>
+      <div class="modal__actions">
+        <button id="confirmCancelButton" class="button button--secondary" type="button">Cancel</button>
+        <button id="confirmOkButton" class="button" type="button">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://safe-right-fast.github.io/public-utility-pages/srfQbRest.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const titleEl = document.getElementById('title');
+      const searchInput = document.getElementById('searchInput');
+      const refreshButton = document.getElementById('refreshButton');
+      const revertAllButton = document.getElementById('revertAllButton');
+      const saveButton = document.getElementById('saveButton');
+      const statusBar = document.getElementById('statusBar');
+      const tableHost = document.getElementById('tableHost');
+      const confirmModal = document.getElementById('confirmModal');
+      const confirmTitle = document.getElementById('confirmTitle');
+      const confirmMessage = document.getElementById('confirmMessage');
+      const confirmCancelButton = document.getElementById('confirmCancelButton');
+      const confirmOkButton = document.getElementById('confirmOkButton');
+
+      let params;
+      let srfQb;
+      let rows = [];
+      let visibleRowIds = [];
+      let rowFieldLabels = new Map();
+      let childValueLabel = 'Value';
+      let validationTimer = null;
+      let validationRunId = 0;
+      let loading = false;
+      let saving = false;
+      let localUnloadAttached = false;
+      let topUnloadAttached = false;
+      let topWindowRef = null;
+      let pendingConfirmResolve = null;
+      let previousFocusedElement = null;
+      const uniquenessCache = new Map();
+
+      try {
+        params = parseParams(new URLSearchParams(window.location.search));
+      } catch (error) {
+        setStatus(error.message, 'error');
+        tableHost.innerHTML = '<div class="empty-state">Configuration error</div>';
+        return;
+      }
+
+      if (!params.showInMobile && localStorage.getItem('isReactNativeWebView') === 'true') {
+        document.body.innerHTML = '';
+        return;
+      }
+
+      srfQb = new SrfQbRest({ appToken: params.apptoken, userAgent: 'Unique Child Field Widget' });
+
+      titleEl.textContent = params.title || 'Unique Child Field';
+      saveButton.textContent = params.saveButtonLabel;
+      searchInput.hidden = params.hideSearch;
+      searchInput.placeholder = params.searchPlaceholder;
+
+      searchInput.addEventListener('input', renderTable);
+      refreshButton.addEventListener('click', handleRefresh);
+      revertAllButton.addEventListener('click', handleRevertAll);
+      saveButton.addEventListener('click', handleSave);
+      tableHost.addEventListener('input', handleInput);
+      tableHost.addEventListener('blur', handleBlur, true);
+      tableHost.addEventListener('paste', handlePaste);
+      tableHost.addEventListener('click', handleTableClick);
+      confirmCancelButton.addEventListener('click', () => closeConfirmModal(false));
+      confirmOkButton.addEventListener('click', () => closeConfirmModal(true));
+
+      loadData();
+
+      function parseParams(urlParams) {
+        const parsed = {
+          rowTableId: requiredText(urlParams, 'rowTableId'),
+          rowWhere: requiredText(urlParams, 'rowWhere'),
+          rowKeyFieldId: optionalInt(urlParams, 'rowKeyFieldId', 3),
+          rowLabelFieldIds: requiredIntList(urlParams, 'rowLabelFieldIds'),
+          rowLabelHeaders: optionalTextList(urlParams, 'rowLabelHeaders'),
+          rowSortFieldId: optionalInt(urlParams, 'rowSortFieldId', null),
+          rowSortOrder: (urlParams.get('rowSortOrder') || 'ASC').toUpperCase() === 'DESC' ? 'DESC' : 'ASC',
+          childTableId: requiredText(urlParams, 'childTableId'),
+          childKeyFieldId: optionalInt(urlParams, 'childKeyFieldId', 3),
+          childValueFieldId: requiredInt(urlParams, 'childValueFieldId'),
+          childRelatedRowFieldId: requiredInt(urlParams, 'childRelatedRowFieldId'),
+          apptoken: requiredText(urlParams, 'apptoken'),
+          title: urlParams.get('title') || '',
+          childValueHeader: urlParams.get('childValueHeader') || '',
+          placeholder: urlParams.get('placeholder') || '',
+          saveButtonLabel: urlParams.get('saveButtonLabel') || 'Save Changes',
+          searchPlaceholder: urlParams.get('searchPlaceholder') || 'Search',
+          hideSearch: urlParams.get('hideSearch') === 'true',
+          readonly: resolveReadonly(urlParams),
+          showInMobile: urlParams.get('showInMobile') === 'true',
+          maxRows: optionalInt(urlParams, 'maxRows', 600),
+          chunkSize: optionalInt(urlParams, 'chunkSize', 75),
+          validationDelayMs: optionalInt(urlParams, 'validationDelayMs', 1200),
+          cacheTtlMs: optionalInt(urlParams, 'cacheTtlMs', 120000),
+        };
+
+        if (!parsed.chunkSize || parsed.chunkSize < 1) parsed.chunkSize = 75;
+        if (!parsed.maxRows || parsed.maxRows < 1) parsed.maxRows = 600;
+        if (!parsed.validationDelayMs || parsed.validationDelayMs < 250) parsed.validationDelayMs = 1200;
+        return parsed;
+      }
+
+      function requiredText(urlParams, key) {
+        const value = urlParams.get(key);
+        if (!value) throw new Error(`Missing required URL parameter: ${key}`);
+        return value;
+      }
+
+      function requiredInt(urlParams, key) {
+        const value = parseInt(requiredText(urlParams, key), 10);
+        if (!Number.isFinite(value)) throw new Error(`Invalid numeric URL parameter: ${key}`);
+        return value;
+      }
+
+      function optionalInt(urlParams, key, fallback) {
+        const raw = urlParams.get(key);
+        if (raw === null || raw === '') return fallback;
+        const value = parseInt(raw, 10);
+        if (!Number.isFinite(value)) throw new Error(`Invalid numeric URL parameter: ${key}`);
+        return value;
+      }
+
+      function requiredIntList(urlParams, key) {
+        const raw = requiredText(urlParams, key);
+        const values = raw.split(',').map((part) => parseInt(part.trim(), 10));
+        if (!values.length || values.some((value) => !Number.isFinite(value))) {
+          throw new Error(`Invalid numeric list URL parameter: ${key}`);
+        }
+        return values;
+      }
+
+      function optionalTextList(urlParams, key) {
+        const raw = urlParams.get(key);
+        if (!raw) return [];
+        return raw.split(',').map((part) => part.trim());
+      }
+
+      function resolveReadonly(urlParams) {
+        const override = urlParams.get('readonly');
+        if (override === 'true') return true;
+        if (override === 'false') return false;
+
+        const topHref = getTopHref();
+        if (!topHref) return false;
+
+        try {
+          const topUrl = new URL(topHref);
+          const action = (topUrl.searchParams.get('a') || topUrl.searchParams.get('action') || '').toLowerCase();
+          const path = topUrl.pathname.toLowerCase();
+          if (action === 'dr' || path.includes('/action/dr')) return true;
+          if (action === 'er' || path.includes('/action/er')) return false;
+        } catch (error) {
+          return false;
+        }
+
+        return false;
+      }
+
+      function getTopHref() {
+        try {
+          return window.top.location.href;
+        } catch (error) {
+          return '';
+        }
+      }
+
+      async function loadData() {
+        loading = true;
+        let loaded = false;
+        rows = [];
+        uniquenessCache.clear();
+        updateControls();
+        setStatus('Loading...');
+        tableHost.innerHTML = '<div class="loading-state">Loading...</div>';
+
+        try {
+          const select = uniqueNumbers([params.rowKeyFieldId, ...params.rowLabelFieldIds]);
+          const rowQuery = {
+            from: params.rowTableId,
+            where: params.rowWhere,
+            select,
+          };
+
+          if (params.rowSortFieldId) {
+            rowQuery.sortBy = [{ fieldId: params.rowSortFieldId, order: params.rowSortOrder }];
+          }
+
+          const rowResponse = await srfQb.query(rowQuery, params.apptoken, { includeMetadata: true });
+          const rowRecords = queryRecords(rowResponse);
+          rowFieldLabels = buildFieldLabelMap(queryFields(rowResponse));
+
+          if (rowRecords.length > params.maxRows) {
+            throw new Error(`This view returned ${rowRecords.length} rows. The configured limit is ${params.maxRows}.`);
+          }
+
+          const childResult = await loadChildRecords(rowRecords);
+          childValueLabel = params.childValueHeader || childResult.childFieldLabels.get(params.childValueFieldId) || 'Value';
+          titleEl.textContent = params.title || childValueLabel;
+
+          rows = rowRecords.map((record) => makeRow(record, childResult.childrenByRowId));
+          runLocalValidation();
+          loaded = true;
+          setStatus(rows.length ? `${rows.length} rows loaded${params.readonly ? ' (read-only)' : ''}.` : 'No rows found.');
+        } catch (error) {
+          setStatus(error.message, 'error');
+          tableHost.innerHTML = '<div class="empty-state">Unable to load rows</div>';
+        } finally {
+          loading = false;
+          if (loaded) renderTable();
+          updateControls();
+        }
+      }
+
+      async function loadChildRecords(rowRecords) {
+        const rowIds = rowRecords.map((record) => String(fieldValue(record, params.rowKeyFieldId))).filter(Boolean);
+        const childrenByRowId = new Map();
+        const childFieldLabels = new Map();
+        const select = uniqueNumbers([params.childKeyFieldId, params.childValueFieldId, params.childRelatedRowFieldId]);
+
+        if (!rowIds.length) {
+          return { childrenByRowId, childFieldLabels };
+        }
+
+        for (const chunk of chunkArray(rowIds, params.chunkSize)) {
+          const where = chunk.map((rowId) => `{${params.childRelatedRowFieldId}.EX.'${escapeQbValue(rowId)}'}`).join(' OR ');
+          const response = await srfQb.query({
+            from: params.childTableId,
+            where,
+            select,
+          }, params.apptoken, { includeMetadata: true });
+
+          if (!childFieldLabels.size) {
+            for (const [fieldId, label] of buildFieldLabelMap(queryFields(response))) {
+              childFieldLabels.set(fieldId, label);
+            }
+          }
+
+          for (const childRecord of queryRecords(response)) {
+            const rowId = String(fieldValue(childRecord, params.childRelatedRowFieldId));
+            if (!childrenByRowId.has(rowId)) childrenByRowId.set(rowId, []);
+            childrenByRowId.get(rowId).push(childRecord);
+          }
+        }
+
+        return { childrenByRowId, childFieldLabels };
+      }
+
+      function makeRow(record, childrenByRowId) {
+        const rowId = String(fieldValue(record, params.rowKeyFieldId));
+        const childRecords = childrenByRowId.get(rowId) || [];
+        const firstChild = childRecords[0] || null;
+        const originalValue = firstChild ? stringifyValue(fieldValue(firstChild, params.childValueFieldId)) : '';
+
+        return {
+          id: rowId,
+          record,
+          childRecordId: firstChild ? String(fieldValue(firstChild, params.childKeyFieldId)) : '',
+          originalValue,
+          draftValue: originalValue,
+          lockedError: childRecords.length > 1 ? 'Multiple child records found' : '',
+          localError: '',
+          serverError: '',
+          saveError: '',
+          checking: false,
+          lastCheckedKey: '',
+        };
+      }
+
+      function renderTable() {
+        if (loading) return;
+
+        const visibleRows = getVisibleRows();
+        visibleRowIds = visibleRows.map((row) => row.id);
+
+        if (!rows.length) {
+          tableHost.innerHTML = '<div class="empty-state">No rows found</div>';
+          updateControls();
+          return;
+        }
+
+        if (!visibleRows.length) {
+          tableHost.innerHTML = '<div class="empty-state">No rows match the current search</div>';
+          updateControls();
+          return;
+        }
+
+        const headerCells = params.rowLabelFieldIds.map((fieldId, index) => {
+          const label = params.rowLabelHeaders[index] || rowFieldLabels.get(fieldId) || `Field ${fieldId}`;
+          return `<th>${escapeHtml(label)}</th>`;
+        }).join('');
+
+        tableHost.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                ${headerCells}
+                <th>${escapeHtml(childValueLabel)}</th>
+                <th>Status</th>
+                <th class="actions">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${visibleRows.map(renderRow).join('')}
+            </tbody>
+          </table>
+        `;
+        updateControls();
+      }
+
+      function renderRow(row) {
+        const labelCells = params.rowLabelFieldIds.map((fieldId) => {
+          return `<td>${escapeHtml(formatFieldValue(fieldValue(row.record, fieldId)))}</td>`;
+        }).join('');
+        const dirty = isDirty(row);
+        const error = row.lockedError || row.localError || row.serverError || row.saveError;
+        const rowClass = [
+          dirty ? 'is-dirty' : '',
+          error ? 'is-error' : '',
+        ].filter(Boolean).join(' ');
+        const valueCell = params.readonly
+          ? `<span class="${normalizedFinalValue(row) ? '' : 'muted'}">${escapeHtml(normalizedFinalValue(row) || '-')}</span>`
+          : `<input class="value-input ${error ? 'is-error' : ''}" data-row-id="${escapeHtml(row.id)}" type="text" value="${escapeAttribute(row.draftValue)}" placeholder="${escapeAttribute(params.placeholder || `Enter ${childValueLabel}`)}" ${row.lockedError ? 'disabled' : ''}>`;
+        const actionCell = dirty && !params.readonly
+          ? `<button class="link-button" type="button" data-action="revert" data-row-id="${escapeHtml(row.id)}">Revert</button>`
+          : '';
+
+        return `
+          <tr class="${rowClass}" data-row-id="${escapeHtml(row.id)}">
+            ${labelCells}
+            <td>${valueCell}</td>
+            <td class="${statusClass(row)}" data-status-row-id="${escapeHtml(row.id)}">${escapeHtml(statusText(row))}</td>
+            <td class="actions">${actionCell}</td>
+          </tr>
+        `;
+      }
+
+      function handleInput(event) {
+        const input = event.target.closest('.value-input');
+        if (!input || params.readonly) return;
+
+        const row = findRow(input.dataset.rowId);
+        if (!row) return;
+
+        row.draftValue = input.value;
+        row.saveError = '';
+        row.serverError = '';
+        row.lastCheckedKey = '';
+        runLocalValidation();
+        updateRenderedRow(row);
+        scheduleValidation();
+      }
+
+      function handleBlur(event) {
+        const input = event.target.closest('.value-input');
+        if (!input || params.readonly) return;
+        validateDirtyRows();
+      }
+
+      function handlePaste(event) {
+        const input = event.target.closest('.value-input');
+        if (!input || params.readonly) return;
+
+        const text = event.clipboardData?.getData('text/plain') || '';
+        if (!text.includes('\n') && !text.includes('\t')) return;
+
+        event.preventDefault();
+        const visibleRows = visibleRowIds.map(findRow).filter(Boolean);
+        const startIndex = visibleRows.findIndex((row) => row.id === input.dataset.rowId);
+        if (startIndex === -1) return;
+
+        const pastedValues = text.replace(/\r/g, '').split('\n')
+          .filter((line, index, lines) => line !== '' || index < lines.length - 1)
+          .map((line) => line.split('\t')[0]);
+
+        pastedValues.forEach((value, offset) => {
+          const row = visibleRows[startIndex + offset];
+          if (!row || row.lockedError) return;
+          row.draftValue = value;
+          row.saveError = '';
+          row.serverError = '';
+          row.lastCheckedKey = '';
+        });
+
+        runLocalValidation();
+        renderTable();
+        scheduleValidation();
+      }
+
+      function handleTableClick(event) {
+        const button = event.target.closest('[data-action="revert"]');
+        if (!button) return;
+
+        const row = findRow(button.dataset.rowId);
+        if (!row) return;
+        revertRow(row);
+        renderTable();
+      }
+
+      async function handleRefresh() {
+        if (hasDirtyRows()) {
+          const confirmed = await showConfirmModal({
+            title: 'Discard changes?',
+            message: 'Discard unsaved changes and refresh from Quickbase?',
+            confirmLabel: 'Discard',
+          });
+          if (!confirmed) return;
+        }
+        await loadData();
+      }
+
+      async function handleRevertAll() {
+        if (!hasDirtyRows()) return;
+        const confirmed = await showConfirmModal({
+          title: 'Revert changes?',
+          message: 'Revert all unsaved changes?',
+          confirmLabel: 'Revert',
+        });
+        if (!confirmed) return;
+        rows.forEach(revertRow);
+        renderTable();
+        setStatus('Unsaved changes reverted.');
+      }
+
+      function revertRow(row) {
+        row.draftValue = row.originalValue;
+        row.localError = '';
+        row.serverError = '';
+        row.saveError = '';
+        row.checking = false;
+        row.lastCheckedKey = '';
+      }
+
+      async function handleSave() {
+        if (params.readonly || saving) return;
+
+        clearTimeout(validationTimer);
+        await validateDirtyRows();
+
+        const invalidRows = rows.filter((row) => isDirty(row) && rowHasBlockingError(row));
+        if (invalidRows.length) {
+          setStatus('Resolve validation errors before saving.', 'error');
+          renderTable();
+          return;
+        }
+
+        const dirtyRows = rows.filter((row) => isDirty(row) && !row.lockedError);
+        if (!dirtyRows.length) {
+          setStatus('No changes to save.');
+          updateControls();
+          return;
+        }
+
+        const riskyRows = dirtyRows.filter((row) => row.childRecordId);
+        if (riskyRows.length) {
+          const confirmed = await showConfirmModal({
+            title: 'Change saved values?',
+            message: buildRiskySaveMessage(riskyRows),
+            confirmLabel: 'Save Changes',
+          });
+          if (!confirmed) return;
+        }
+
+        saving = true;
+        updateControls();
+        setStatus('Saving...');
+
+        try {
+          const deleteRows = dirtyRows.filter((row) => row.childRecordId && normalizedFinalValue(row) === '');
+          const upsertRows = dirtyRows.filter((row) => normalizedFinalValue(row) !== '');
+
+          const deletesOk = await saveDeletes(deleteRows);
+          if (!deletesOk) {
+            upsertRows.forEach((row) => {
+              row.saveError = row.saveError || 'Save stopped because one or more clears failed.';
+            });
+            setStatus('Some clears failed. No creates or updates were saved.', 'error');
+            renderTable();
+            return;
+          }
+
+          await saveUpserts(upsertRows);
+          const stillDirty = rows.filter((row) => isDirty(row)).length;
+          runLocalValidation();
+          renderTable();
+          setStatus(stillDirty ? 'Save completed with row errors.' : 'Changes saved.', stillDirty ? 'warn' : '');
+        } catch (error) {
+          setStatus(error.message, 'error');
+        } finally {
+          saving = false;
+          updateControls();
+        }
+      }
+
+      async function saveDeletes(deleteRows) {
+        if (!deleteRows.length) return true;
+
+        let allOk = true;
+        for (const chunk of chunkArray(deleteRows, params.chunkSize)) {
+          const where = chunk.map((row) => `{${params.childKeyFieldId}.EX.'${escapeQbValue(row.childRecordId)}'}`).join(' OR ');
+          try {
+            await srfQb.delete({ from: params.childTableId, where }, params.apptoken);
+            chunk.forEach((row) => {
+              row.childRecordId = '';
+              row.originalValue = '';
+              row.draftValue = '';
+              row.saveError = '';
+              row.serverError = '';
+              row.lastCheckedKey = '';
+            });
+          } catch (error) {
+            allOk = false;
+            chunk.forEach((row) => {
+              row.saveError = error.message;
+            });
+          }
+        }
+
+        return allOk;
+      }
+
+      async function saveUpserts(upsertRows) {
+        if (!upsertRows.length) return;
+
+        const operations = upsertRows.map((row) => ({
+          row,
+          data: {
+            [params.childRelatedRowFieldId]: { value: row.id },
+            [params.childValueFieldId]: { value: normalizedFinalValue(row) },
+          },
+        }));
+
+        let response;
+        try {
+          response = await srfQb.upsert({
+            to: params.childTableId,
+            mergeFieldId: params.childRelatedRowFieldId,
+            data: operations.map((operation) => operation.data),
+            fieldsToReturn: uniqueNumbers([params.childKeyFieldId, params.childRelatedRowFieldId, params.childValueFieldId]),
+          }, params.apptoken);
+        } catch (error) {
+          operations.forEach((operation) => {
+            operation.row.saveError = error.message;
+          });
+          throw error;
+        }
+
+        const failedIndexes = parseLineErrors(response.metadata?.lineErrors, operations);
+        const returnedByRowId = new Map();
+
+        for (const returnedRecord of response.data || []) {
+          returnedByRowId.set(String(fieldValue(returnedRecord, params.childRelatedRowFieldId)), returnedRecord);
+        }
+
+        operations.forEach((operation, index) => {
+          const row = operation.row;
+          if (failedIndexes.has(index)) {
+            row.saveError = failedIndexes.get(index);
+            return;
+          }
+
+          const returnedRecord = returnedByRowId.get(row.id);
+          if (!returnedRecord) {
+            row.saveError = 'Quickbase did not return the saved record.';
+            return;
+          }
+
+          row.childRecordId = String(fieldValue(returnedRecord, params.childKeyFieldId));
+          row.originalValue = stringifyValue(fieldValue(returnedRecord, params.childValueFieldId));
+          row.draftValue = row.originalValue;
+          row.saveError = '';
+          row.serverError = '';
+          row.localError = '';
+          row.lastCheckedKey = comparisonKey(row.originalValue);
+          cacheMatches(row.lastCheckedKey, [recordToMatch(returnedRecord)]);
+        });
+      }
+
+      function parseLineErrors(lineErrors, operations) {
+        const failures = new Map();
+        if (!lineErrors) return failures;
+
+        const entries = Object.entries(lineErrors);
+        const usesZeroBasedIndexes = entries.some(([key]) => parseInt(key, 10) === 0);
+
+        entries.forEach(([key, value]) => {
+          const rawIndex = parseInt(key, 10);
+          const index = usesZeroBasedIndexes ? rawIndex : rawIndex - 1;
+          if (!operations[index]) return;
+          failures.set(index, formatLineError(value));
+        });
+
+        return failures;
+      }
+
+      function formatLineError(value) {
+        if (Array.isArray(value)) return value.map(formatLineError).join('; ');
+        if (value && typeof value === 'object') {
+          return Object.entries(value).map(([field, message]) => `${field}: ${formatLineError(message)}`).join('; ');
+        }
+        return String(value);
+      }
+
+      function buildRiskySaveMessage(riskyRows) {
+        const names = riskyRows.slice(0, 8).map((row) => `- ${rowLabelText(row)}`).join('\n');
+        const extra = riskyRows.length > 8 ? `\n- ${riskyRows.length - 8} more` : '';
+        return `This will change or clear existing saved values.\n\n${names}${extra}\n\nContinue?`;
+      }
+
+      function showConfirmModal({ title = 'Confirm', message, confirmLabel = 'Continue', cancelLabel = 'Cancel' }) {
+        if (pendingConfirmResolve) closeConfirmModal(false);
+
+        previousFocusedElement = document.activeElement;
+        confirmTitle.textContent = title;
+        confirmMessage.textContent = message;
+        confirmOkButton.textContent = confirmLabel;
+        confirmCancelButton.textContent = cancelLabel;
+        confirmModal.hidden = false;
+        confirmOkButton.focus();
+
+        return new Promise((resolve) => {
+          pendingConfirmResolve = resolve;
+        });
+      }
+
+      function closeConfirmModal(confirmed) {
+        if (!pendingConfirmResolve) return;
+        const resolve = pendingConfirmResolve;
+        pendingConfirmResolve = null;
+        confirmModal.hidden = true;
+        resolve(confirmed);
+
+        if (previousFocusedElement && typeof previousFocusedElement.focus === 'function') {
+          previousFocusedElement.focus();
+        }
+        previousFocusedElement = null;
+      }
+
+      function scheduleValidation() {
+        clearTimeout(validationTimer);
+        validationTimer = setTimeout(() => {
+          validateDirtyRows();
+        }, params.validationDelayMs);
+        updateControls();
+      }
+
+      async function validateDirtyRows() {
+        if (params.readonly) return;
+
+        const runId = ++validationRunId;
+        runLocalValidation();
+
+        const valuesToCheck = new Map();
+        rows.forEach((row) => {
+          row.serverError = '';
+          if (!isDirty(row) || row.localError || row.lockedError) return;
+          const finalValue = normalizedFinalValue(row);
+          if (!finalValue) return;
+          const key = comparisonKey(finalValue);
+          const cached = uniquenessCache.get(key);
+          if (cached && Date.now() - cached.timestamp < params.cacheTtlMs) {
+            row.lastCheckedKey = key;
+            return;
+          }
+          valuesToCheck.set(key, finalValue);
+          row.checking = true;
+        });
+
+        renderVisibleStatuses();
+        updateControls();
+
+        try {
+          for (const entries of chunkArray(Array.from(valuesToCheck.entries()), params.chunkSize)) {
+            if (validationRunId !== runId) return;
+            const where = entries.map(([, value]) => `{${params.childValueFieldId}.EX.'${escapeQbValue(value)}'}`).join(' OR ');
+            const records = await srfQb.query({
+              from: params.childTableId,
+              where,
+              select: uniqueNumbers([params.childKeyFieldId, params.childValueFieldId, params.childRelatedRowFieldId]),
+            }, params.apptoken);
+
+            const matchesByKey = new Map(entries.map(([key]) => [key, []]));
+            for (const record of records) {
+              const match = recordToMatch(record);
+              const key = comparisonKey(match.value);
+              if (!matchesByKey.has(key)) matchesByKey.set(key, []);
+              matchesByKey.get(key).push(match);
+            }
+
+            for (const [key, matches] of matchesByKey) {
+              cacheMatches(key, matches);
+            }
+          }
+
+          if (validationRunId !== runId) return;
+          rows.forEach((row) => {
+            row.checking = false;
+          });
+          evaluateServerConflicts();
+        } catch (error) {
+          rows.forEach((row) => {
+            if (row.checking) {
+              row.checking = false;
+              row.serverError = error.message;
+            }
+          });
+        } finally {
+          if (validationRunId === runId) {
+            renderVisibleStatuses();
+            updateControls();
+          }
+        }
+      }
+
+      function runLocalValidation() {
+        const rowsByValue = new Map();
+
+        rows.forEach((row) => {
+          row.localError = '';
+          const finalValue = normalizedFinalValue(row);
+          if (!finalValue) return;
+          const key = comparisonKey(finalValue);
+          if (!rowsByValue.has(key)) rowsByValue.set(key, []);
+          rowsByValue.get(key).push(row);
+        });
+
+        for (const sameValueRows of rowsByValue.values()) {
+          if (sameValueRows.length < 2) continue;
+          sameValueRows.forEach((row) => {
+            if (isDirty(row)) row.localError = 'Duplicate value in this table';
+          });
+        }
+      }
+
+      function evaluateServerConflicts() {
+        rows.forEach((row) => {
+          if (!isDirty(row) || row.localError || row.lockedError || !normalizedFinalValue(row)) return;
+
+          const key = comparisonKey(normalizedFinalValue(row));
+          const cached = uniquenessCache.get(key);
+          if (!cached) return;
+
+          const conflict = cached.matches.find((match) => !isAllowedMatch(row, match, key));
+          if (conflict) {
+            row.serverError = `Already used by row ${conflict.relatedRowId || 'unknown'}`;
+          } else {
+            row.serverError = '';
+            row.lastCheckedKey = key;
+          }
+        });
+      }
+
+      function isAllowedMatch(row, match, key) {
+        if (row.childRecordId && String(match.recordId) === String(row.childRecordId)) return true;
+
+        const matchedRow = findRow(String(match.relatedRowId));
+        if (!matchedRow) return false;
+
+        const matchedFinalKey = comparisonKey(normalizedFinalValue(matchedRow));
+        return matchedFinalKey !== key;
+      }
+
+      function cacheMatches(key, matches) {
+        uniquenessCache.set(key, { timestamp: Date.now(), matches });
+      }
+
+      function recordToMatch(record) {
+        return {
+          recordId: String(fieldValue(record, params.childKeyFieldId)),
+          relatedRowId: String(fieldValue(record, params.childRelatedRowFieldId)),
+          value: stringifyValue(fieldValue(record, params.childValueFieldId)),
+        };
+      }
+
+      function getVisibleRows() {
+        const search = searchInput.value.trim().toLowerCase();
+        if (!search) return rows;
+
+        return rows.filter((row) => {
+          const haystack = [
+            rowLabelText(row),
+            row.draftValue,
+            statusText(row),
+          ].join(' ').toLowerCase();
+          return haystack.includes(search);
+        });
+      }
+
+      function updateRenderedRow(row) {
+        const input = tableHost.querySelector(`.value-input[data-row-id="${cssEscape(row.id)}"]`);
+        if (input && input.value !== row.draftValue) input.value = row.draftValue;
+        renderVisibleStatuses();
+        updateControls();
+      }
+
+      function renderVisibleStatuses() {
+        rows.forEach((row) => {
+          const statusCell = tableHost.querySelector(`[data-status-row-id="${cssEscape(row.id)}"]`);
+          if (!statusCell) return;
+          statusCell.textContent = statusText(row);
+          statusCell.className = statusClass(row);
+
+          const tr = tableHost.querySelector(`tr[data-row-id="${cssEscape(row.id)}"]`);
+          if (tr) {
+            tr.classList.toggle('is-dirty', isDirty(row));
+            tr.classList.toggle('is-error', Boolean(row.lockedError || row.localError || row.serverError || row.saveError));
+          }
+
+          const input = tableHost.querySelector(`.value-input[data-row-id="${cssEscape(row.id)}"]`);
+          if (input) input.classList.toggle('is-error', Boolean(row.lockedError || row.localError || row.serverError || row.saveError));
+        });
+      }
+
+      function updateControls() {
+        const dirty = hasDirtyRows();
+        const checking = rows.some((row) => row.checking);
+        const invalid = rows.some((row) => isDirty(row) && rowHasBlockingError(row));
+
+        syncUnloadProtection(dirty);
+        saveButton.disabled = params.readonly || loading || saving || !dirty || checking || invalid;
+        refreshButton.disabled = loading || saving;
+        revertAllButton.disabled = params.readonly || loading || saving || !dirty;
+      }
+
+      function syncUnloadProtection(shouldProtect) {
+        if (shouldProtect && !localUnloadAttached) {
+          window.addEventListener('beforeunload', handleBeforeUnload);
+          localUnloadAttached = true;
+        } else if (!shouldProtect && localUnloadAttached) {
+          window.removeEventListener('beforeunload', handleBeforeUnload);
+          localUnloadAttached = false;
+        }
+
+        if (shouldProtect && !topUnloadAttached) {
+          try {
+            topWindowRef = window.top;
+            if (topWindowRef && topWindowRef !== window) {
+              topWindowRef.addEventListener('beforeunload', handleBeforeUnload);
+              topUnloadAttached = true;
+            }
+          } catch (error) {
+            topWindowRef = null;
+            topUnloadAttached = false;
+          }
+        } else if (!shouldProtect && topUnloadAttached) {
+          try {
+            topWindowRef.removeEventListener('beforeunload', handleBeforeUnload);
+          } catch (error) {}
+          topWindowRef = null;
+          topUnloadAttached = false;
+        }
+      }
+
+      function handleBeforeUnload(event) {
+        if (!hasDirtyRows()) return;
+        event.preventDefault();
+        event.returnValue = '';
+        return '';
+      }
+
+      function statusText(row) {
+        if (row.lockedError) return row.lockedError;
+        if (row.localError) return row.localError;
+        if (row.serverError) return row.serverError;
+        if (row.saveError) return row.saveError;
+        if (row.checking) return 'Checking...';
+        if (params.readonly) return row.childRecordId ? 'Saved' : 'Blank';
+        if (!isDirty(row)) return row.childRecordId ? 'Saved' : 'Blank';
+        if (normalizedFinalValue(row) === '') return row.childRecordId ? 'Will clear on save' : 'Blank';
+        return row.childRecordId ? 'Will update on save' : 'Will create on save';
+      }
+
+      function statusClass(row) {
+        if (row.lockedError || row.localError || row.serverError || row.saveError) return 'row-status row-status--error';
+        if (row.checking || isDirty(row)) return 'row-status row-status--warn';
+        if (row.childRecordId) return 'row-status row-status--ok';
+        return 'row-status';
+      }
+
+      function rowHasBlockingError(row) {
+        return Boolean(row.lockedError || row.localError || row.serverError || row.saveError || row.checking);
+      }
+
+      function hasDirtyRows() {
+        return rows.some(isDirty);
+      }
+
+      function isDirty(row) {
+        return normalizedFinalValue(row) !== String(row.originalValue || '').trim();
+      }
+
+      function normalizedFinalValue(row) {
+        return String(row.draftValue || '').trim();
+      }
+
+      function comparisonKey(value) {
+        return String(value || '').trim().toLowerCase();
+      }
+
+      function findRow(rowId) {
+        return rows.find((row) => row.id === String(rowId));
+      }
+
+      function rowLabelText(row) {
+        return params.rowLabelFieldIds.map((fieldId) => formatFieldValue(fieldValue(row.record, fieldId))).join(' ');
+      }
+
+      function fieldValue(record, fieldId) {
+        return record?.[fieldId]?.value;
+      }
+
+      function stringifyValue(value) {
+        if (value === null || value === undefined) return '';
+        return String(value);
+      }
+
+      function formatFieldValue(value) {
+        if (value === null || value === undefined || value === '') return '-';
+        if (Array.isArray(value)) return value.map(formatFieldValue).join(', ');
+        if (typeof value === 'object') {
+          if ('name' in value) return String(value.name);
+          if ('value' in value) return String(value.value);
+          return JSON.stringify(value);
+        }
+        return String(value);
+      }
+
+      function buildFieldLabelMap(fields) {
+        const labels = new Map();
+        (fields || []).forEach((field) => {
+          labels.set(field.id, field.label || `Field ${field.id}`);
+        });
+        return labels;
+      }
+
+      function queryRecords(response) {
+        return Array.isArray(response) ? response : (response?.data || []);
+      }
+
+      function queryFields(response) {
+        return Array.isArray(response) ? [] : (response?.fields || []);
+      }
+
+      function uniqueNumbers(values) {
+        return Array.from(new Set(values.filter((value) => Number.isFinite(value))));
+      }
+
+      function chunkArray(values, size) {
+        const chunks = [];
+        for (let index = 0; index < values.length; index += size) {
+          chunks.push(values.slice(index, index + size));
+        }
+        return chunks;
+      }
+
+      function escapeQbValue(value) {
+        return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      }
+
+      function setStatus(message, type = '') {
+        statusBar.textContent = message || '';
+        statusBar.className = `status-bar${type === 'error' ? ' status-bar--error' : ''}${type === 'warn' ? ' status-bar--warn' : ''}`;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        }[char]));
+      }
+
+      function escapeAttribute(value) {
+        return escapeHtml(value);
+      }
+
+      function cssEscape(value) {
+        if (window.CSS && CSS.escape) return CSS.escape(value);
+        return String(value).replace(/["\\]/g, '\\$&');
+      }
+    });
+  </script>
+</body>
+</html>
