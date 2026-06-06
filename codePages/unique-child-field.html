@@ -28,6 +28,9 @@ readonly=true|false
 showInMobile=true
 maxRows=600
 validationDelayMs=1200
+parentSaveBehavior=prompt
+confirmExistingChanges=true
+tableMaxHeight=520
 -->
 <head>
   <meta charset="UTF-8">
@@ -74,14 +77,21 @@ validationDelayMs=1200
     .widget {
       width: 100%;
       min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
     .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 8px;
       flex-wrap: wrap;
+      padding-bottom: 2px;
+      background: var(--bg-color);
     }
 
     h1 {
@@ -136,9 +146,12 @@ validationDelayMs=1200
     }
 
     .status-bar {
+      position: sticky;
+      top: 42px;
+      z-index: 19;
       min-height: 18px;
-      margin-bottom: 8px;
       color: var(--muted-color);
+      background: var(--bg-color);
       font-size: 12px;
     }
 
@@ -155,6 +168,7 @@ validationDelayMs=1200
     .table-wrap {
       width: 100%;
       overflow: auto;
+      max-height: min(var(--table-max-height, 520px), calc(100vh - 78px));
       border: 1px solid var(--border-color);
       border-radius: var(--border-radius);
       background: var(--bg-color);
@@ -383,8 +397,14 @@ validationDelayMs=1200
       let localUnloadAttached = false;
       let topUnloadAttached = false;
       let topWindowRef = null;
+      let topSaveClickAttached = false;
+      let topDocumentRef = null;
+      let bypassTopSaveClick = false;
+      let bypassUnloadProtection = false;
+      let bypassUnloadTimer = null;
       let pendingConfirmResolve = null;
       let previousFocusedElement = null;
+      let activeModal = null;
       const uniquenessCache = new Map();
 
       try {
@@ -406,6 +426,7 @@ validationDelayMs=1200
       saveButton.textContent = params.saveButtonLabel;
       searchInput.hidden = params.hideSearch;
       searchInput.placeholder = params.searchPlaceholder;
+      document.documentElement.style.setProperty('--table-max-height', `${params.tableMaxHeight}px`);
 
       searchInput.addEventListener('input', renderTable);
       refreshButton.addEventListener('click', handleRefresh);
@@ -417,6 +438,7 @@ validationDelayMs=1200
       tableHost.addEventListener('click', handleTableClick);
       confirmCancelButton.addEventListener('click', () => closeConfirmModal(false));
       confirmOkButton.addEventListener('click', () => closeConfirmModal(true));
+      attachTopSaveClickCapture();
 
       loadData();
 
@@ -440,6 +462,9 @@ validationDelayMs=1200
           saveButtonLabel: urlParams.get('saveButtonLabel') || 'Save Changes',
           searchPlaceholder: urlParams.get('searchPlaceholder') || 'Search',
           hideSearch: urlParams.get('hideSearch') === 'true',
+          parentSaveBehavior: parseChoice(urlParams, 'parentSaveBehavior', 'prompt', ['prompt', 'saveChildren', 'continueParent', 'block']),
+          confirmExistingChanges: urlParams.get('confirmExistingChanges') !== 'false',
+          tableMaxHeight: optionalInt(urlParams, 'tableMaxHeight', 520),
           readonly: resolveReadonly(urlParams),
           showInMobile: urlParams.get('showInMobile') === 'true',
           maxRows: optionalInt(urlParams, 'maxRows', 600),
@@ -451,6 +476,7 @@ validationDelayMs=1200
         if (!parsed.chunkSize || parsed.chunkSize < 1) parsed.chunkSize = 75;
         if (!parsed.maxRows || parsed.maxRows < 1) parsed.maxRows = 600;
         if (!parsed.validationDelayMs || parsed.validationDelayMs < 250) parsed.validationDelayMs = 1200;
+        if (!parsed.tableMaxHeight || parsed.tableMaxHeight < 180) parsed.tableMaxHeight = 520;
         return parsed;
       }
 
@@ -487,6 +513,11 @@ validationDelayMs=1200
         const raw = urlParams.get(key);
         if (!raw) return [];
         return raw.split(',').map((part) => part.trim());
+      }
+
+      function parseChoice(urlParams, key, fallback, allowed) {
+        const value = urlParams.get(key) || fallback;
+        return allowed.includes(value) ? value : fallback;
       }
 
       function resolveReadonly(urlParams) {
@@ -785,6 +816,10 @@ validationDelayMs=1200
       }
 
       async function handleSave() {
+        await saveDirtyRows({ confirmRisky: params.confirmExistingChanges });
+      }
+
+      async function saveDirtyRows({ confirmRisky = true } = {}) {
         if (params.readonly || saving) return;
 
         clearTimeout(validationTimer);
@@ -794,24 +829,24 @@ validationDelayMs=1200
         if (invalidRows.length) {
           setStatus('Resolve validation errors before saving.', 'error');
           renderTable();
-          return;
+          return false;
         }
 
         const dirtyRows = rows.filter((row) => isDirty(row) && !row.lockedError);
         if (!dirtyRows.length) {
           setStatus('No changes to save.');
           updateControls();
-          return;
+          return true;
         }
 
         const riskyRows = dirtyRows.filter((row) => row.childRecordId);
-        if (riskyRows.length) {
+        if (confirmRisky && riskyRows.length) {
           const confirmed = await showConfirmModal({
             title: 'Change saved values?',
             message: buildRiskySaveMessage(riskyRows),
             confirmLabel: 'Save Changes',
           });
-          if (!confirmed) return;
+          if (!confirmed) return false;
         }
 
         saving = true;
@@ -829,7 +864,7 @@ validationDelayMs=1200
             });
             setStatus('Some clears failed. No creates or updates were saved.', 'error');
             renderTable();
-            return;
+            return false;
           }
 
           await saveUpserts(upsertRows);
@@ -837,8 +872,10 @@ validationDelayMs=1200
           runLocalValidation();
           renderTable();
           setStatus(stillDirty ? 'Save completed with row errors.' : 'Changes saved.', stillDirty ? 'warn' : '');
+          return !stillDirty;
         } catch (error) {
           setStatus(error.message, 'error');
+          return false;
         } finally {
           saving = false;
           updateControls();
@@ -961,30 +998,93 @@ validationDelayMs=1200
       }
 
       function showConfirmModal({ title = 'Confirm', message, confirmLabel = 'Continue', cancelLabel = 'Cancel' }) {
-        if (pendingConfirmResolve) closeConfirmModal(false);
-
-        previousFocusedElement = document.activeElement;
-        confirmTitle.textContent = title;
-        confirmMessage.textContent = message;
-        confirmOkButton.textContent = confirmLabel;
-        confirmCancelButton.textContent = cancelLabel;
-        confirmModal.hidden = false;
-        confirmOkButton.focus();
-
-        return new Promise((resolve) => {
-          pendingConfirmResolve = resolve;
+        return showChoiceModal({
+          title,
+          message,
+          choices: [
+            { label: cancelLabel, value: false, secondary: true },
+            { label: confirmLabel, value: true },
+          ],
         });
       }
 
-      function closeConfirmModal(confirmed) {
-        if (!pendingConfirmResolve) return;
-        const resolve = pendingConfirmResolve;
-        pendingConfirmResolve = null;
-        confirmModal.hidden = true;
-        resolve(confirmed);
+      function showChoiceModal({ title = 'Confirm', message, choices }) {
+        if (activeModal) closeConfirmModal(null);
+
+        const modalDoc = getPreferredModalDocument();
+        const backdrop = modalDoc.createElement('div');
+        const modal = modalDoc.createElement('div');
+        const body = modalDoc.createElement('div');
+        const heading = modalDoc.createElement('h2');
+        const messageEl = modalDoc.createElement('p');
+        const actions = modalDoc.createElement('div');
+        const keyHandler = (event) => {
+          if (event.key === 'Escape') closeConfirmModal(null);
+        };
+
+        previousFocusedElement = modalDoc.activeElement;
+        backdrop.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,.35);box-sizing:border-box;');
+        modal.setAttribute('style', 'width:min(460px,100%);border:1px solid #d9dee3;border-radius:4px;background:#fff;color:#222;box-shadow:0 12px 34px rgba(0,0,0,.22);font-family:Helvetica,Arial,sans-serif;font-size:14px;');
+        body.setAttribute('style', 'padding:14px;');
+        heading.setAttribute('style', 'margin:0 0 8px;font-size:16px;line-height:1.3;font-weight:600;');
+        messageEl.setAttribute('style', 'margin:0;white-space:pre-wrap;line-height:1.4;');
+        actions.setAttribute('style', 'display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:10px 14px 14px;');
+
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        heading.textContent = title;
+        messageEl.textContent = message;
+
+        body.appendChild(heading);
+        body.appendChild(messageEl);
+        modal.appendChild(body);
+        modal.appendChild(actions);
+        backdrop.appendChild(modal);
+
+        choices.forEach((choice) => {
+          const button = modalDoc.createElement('button');
+          button.type = 'button';
+          button.textContent = choice.label;
+          button.setAttribute('style', choice.secondary
+            ? 'border:1px solid #d9dee3;border-radius:4px;padding:6px 10px;color:#222;background:#fff;cursor:pointer;font:inherit;'
+            : 'border:none;border-radius:4px;padding:6px 10px;color:#fff;background:rgb(96,204,96);cursor:pointer;font:inherit;box-shadow:rgba(0,0,0,.16) 0 1px 4px;');
+          button.addEventListener('click', () => closeConfirmModal(choice.value));
+          actions.appendChild(button);
+        });
+
+        backdrop.addEventListener('click', (event) => {
+          if (event.target === backdrop) closeConfirmModal(null);
+        });
+
+        modalDoc.addEventListener('keydown', keyHandler);
+        modalDoc.body.appendChild(backdrop);
+
+        return new Promise((resolve) => {
+          activeModal = { doc: modalDoc, backdrop, resolve, keyHandler };
+          const primaryButton = actions.querySelector('button:last-child');
+          if (primaryButton) primaryButton.focus();
+        });
+      }
+
+      function getPreferredModalDocument() {
+        try {
+          if (window.top?.document?.body) return window.top.document;
+        } catch (error) {}
+        return document;
+      }
+
+      function closeConfirmModal(value) {
+        if (!activeModal) return;
+        const modal = activeModal;
+        activeModal = null;
+        modal.doc.removeEventListener('keydown', modal.keyHandler);
+        modal.backdrop.remove();
+        modal.resolve(value);
 
         if (previousFocusedElement && typeof previousFocusedElement.focus === 'function') {
-          previousFocusedElement.focus();
+          try {
+            previousFocusedElement.focus();
+          } catch (error) {}
         }
         previousFocusedElement = null;
       }
@@ -1105,6 +1205,7 @@ validationDelayMs=1200
 
       function isAllowedMatch(row, match, key) {
         if (row.childRecordId && String(match.recordId) === String(row.childRecordId)) return true;
+        if (String(match.relatedRowId) === String(row.id)) return true;
 
         const matchedRow = findRow(String(match.relatedRowId));
         if (!matchedRow) return false;
@@ -1166,16 +1267,114 @@ validationDelayMs=1200
 
       function updateControls() {
         const dirty = hasDirtyRows();
-        const checking = rows.some((row) => row.checking);
         const invalid = rows.some((row) => isDirty(row) && rowHasBlockingError(row));
 
         syncUnloadProtection(dirty);
-        saveButton.disabled = params.readonly || loading || saving || !dirty || checking || invalid;
+        saveButton.disabled = params.readonly || loading || saving || !dirty || invalid;
         refreshButton.disabled = loading || saving;
         revertAllButton.disabled = params.readonly || loading || saving || !dirty;
       }
 
+      function attachTopSaveClickCapture() {
+        if (topSaveClickAttached) return;
+        try {
+          if (window.top === window) return;
+          topDocumentRef = window.top?.document;
+          if (!topDocumentRef) return;
+          topDocumentRef.addEventListener('click', handleTopSaveClick, true);
+          topSaveClickAttached = true;
+        } catch (error) {
+          topDocumentRef = null;
+          topSaveClickAttached = false;
+        }
+      }
+
+      async function handleTopSaveClick(event) {
+        const saveButtonEl = findTopSaveButton(event.target);
+        if (!saveButtonEl) return;
+
+        if (bypassTopSaveClick) {
+          bypassTopSaveClick = false;
+          return;
+        }
+
+        if (params.readonly || !hasDirtyRows()) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        if (saving) {
+          setStatus('Child values are already saving. Try the QuickBase save again when they finish.', 'warn');
+          return;
+        }
+
+        if (params.parentSaveBehavior === 'saveChildren') {
+          const saved = await saveDirtyRows({ confirmRisky: params.confirmExistingChanges });
+          if (saved) continueTopSave(saveButtonEl);
+          return;
+        }
+
+        if (params.parentSaveBehavior === 'continueParent') {
+          continueTopSave(saveButtonEl);
+          return;
+        }
+
+        if (params.parentSaveBehavior === 'block') {
+          setStatus('Save child values before saving the parent record.', 'error');
+          return;
+        }
+
+        const choice = await showChoiceModal({
+          title: 'Unsaved child values',
+          message: 'This page has unsaved child values. What should happen before QuickBase saves the parent record?',
+          choices: [
+            { label: 'Cancel', value: 'cancel', secondary: true },
+            { label: 'Continue without saving child values', value: 'continue', secondary: true },
+            { label: 'Save child values first', value: 'save-child' },
+          ],
+        });
+
+        if (choice === 'save-child') {
+          const saved = await saveDirtyRows({ confirmRisky: params.confirmExistingChanges });
+          if (saved) continueTopSave(saveButtonEl);
+          return;
+        }
+
+        if (choice === 'continue') {
+          continueTopSave(saveButtonEl);
+        }
+      }
+
+      function findTopSaveButton(target) {
+        if (!target || typeof target.closest !== 'function') return null;
+        return target.closest([
+          '#saveButton',
+          '#footerSaveButton',
+          '#saveMenuOption',
+          '#saveAndNextMenuOption',
+          '#saveAndKeepWorkingMenuOption',
+          '#footerSaveMenuOption',
+          '#footerSaveAndNextMenuOption',
+          '#footerSaveAndKeepWorkingMenuOption',
+        ].join(','));
+      }
+
+      function continueTopSave(saveButtonEl) {
+        bypassTopSaveClick = true;
+        bypassUnloadProtection = true;
+        syncUnloadProtection(false);
+        clearTimeout(bypassUnloadTimer);
+        bypassUnloadTimer = setTimeout(() => {
+          bypassUnloadProtection = false;
+          syncUnloadProtection(hasDirtyRows());
+        }, 15000);
+        saveButtonEl.click();
+      }
+
       function syncUnloadProtection(shouldProtect) {
+        if (bypassUnloadProtection) shouldProtect = false;
+
         if (shouldProtect && !localUnloadAttached) {
           window.addEventListener('beforeunload', handleBeforeUnload);
           localUnloadAttached = true;
@@ -1205,6 +1404,7 @@ validationDelayMs=1200
       }
 
       function handleBeforeUnload(event) {
+        if (bypassUnloadProtection) return;
         if (!hasDirtyRows()) return;
         event.preventDefault();
         event.returnValue = '';
