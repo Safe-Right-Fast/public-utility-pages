@@ -113,9 +113,17 @@ class SrfQbRest {
    * @param {number} [params.options.top] - The maximum number of records to return. If provided, the query will not be paginated automatically.
    * @param {boolean} [params.options.compareWithAppLocalTime=false] - Use the app's time zone for date/time comparisons.
    * @param {string} [apptoken] - An optional app token to override the one set in the constructor.
-   * @returns {Promise<object[]|object>} A promise that resolves to an array of all records, or a single page response object if pagination options are provided.
+   * @param {object} [queryOptions] - Local options for this helper.
+   * @param {boolean} [queryOptions.includeMetadata=false] - Return { data, fields, metadata } instead of only the data array.
+   * @returns {Promise<object[]|object>} A promise that resolves to an array of all records, a response object if pagination options are provided, or { data, fields, metadata } when includeMetadata is true.
    */
-  async query(params, apptoken) {
+  async query(params, apptoken, queryOptions = {}) {
+    if (apptoken && typeof apptoken === "object") {
+      queryOptions = apptoken;
+      apptoken = undefined;
+    }
+
+    const includeMetadata = queryOptions.includeMetadata === true;
     const hasPagination = params.options?.skip !== undefined || params.options?.top !== undefined;
 
     const singleQuery = async (p, tok) => {
@@ -133,6 +141,8 @@ class SrfQbRest {
     }
 
     let allData = [];
+    let fields = [];
+    let metadata = null;
     let skip = 0;
     let totalRecords = -1;
     let numRecordsInResponse = 0;
@@ -145,15 +155,30 @@ class SrfQbRest {
         allData = allData.concat(response.data);
       }
 
+      if (!fields.length && response.fields) {
+        fields = response.fields;
+      }
+
       if (totalRecords === -1) {
         totalRecords = response.metadata.totalRecords;
       }
+
+      metadata = response.metadata;
       
       numRecordsInResponse = response.metadata.numRecords;
       if (numRecordsInResponse > 0) {
         skip += numRecordsInResponse;
       }
     } while (allData.length < totalRecords && numRecordsInResponse > 0);
+
+    if (includeMetadata) {
+      return {
+        data: allData,
+        fields,
+        metadata: { ...(metadata || {}), totalRecords, numRecords: allData.length },
+      };
+    }
+
     return allData;
   }
 
